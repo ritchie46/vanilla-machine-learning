@@ -1,6 +1,4 @@
 import numpy as np
-from sklearn import datasets
-import sklearn.metrics
 
 
 def new_model(in_dim, h_dim, out_dim):
@@ -81,11 +79,11 @@ def cost_mse(a, y):
     :param y: (array) Ground truth labels
     :return: (flt) Loss
     """
-    return np.mean((a - y)**2)
+    return 0.5 * np.sum((a - y)**2)
 
 
 def diff_cost_mse(a, y):
-    return (a - y)
+    return a - y
 
 
 def bpe_delta(a, y):
@@ -178,11 +176,13 @@ class NeuralNetwork:
 
             _, y = feed_forward(x, self.w, self.b)
 
-            if i % epochs // 20 == 0:
-                print(cost_mse(y[3], labels))
+            if i % epochs // 10 == 0:
+                print("Loss:", cost_mse(y[3], labels))
 
 
 if __name__ == "__main__":
+    from sklearn import datasets
+    import sklearn.metrics
     np.random.seed(1)
 
     # Load data
@@ -204,7 +204,6 @@ if __name__ == "__main__":
     for i in range(len(y)):
         y_pred.append(np.argmax(y_[3][i]))
         y_true.append(np.argmax(y[i]))
-        print(y_pred[-1], y_true[-1])
 
     print(sklearn.metrics.classification_report(y_true, y_pred))
 
