@@ -163,7 +163,6 @@ class NeuralNetwork:
         """
 
         for i in range(epochs):
-
             # Shuffle the data
             seed = np.arange(x.shape[0])
             np.random.shuffle(seed)

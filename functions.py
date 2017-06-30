@@ -49,18 +49,18 @@ class CrossEntropy:
         return Softmax.activation(z)
 
     @staticmethod
-    def delta(y_hat, y):
+    def delta(y_true, y):
         """
         http://cs231n.github.io/linear-classify/#softmax
         https://stackoverflow.com/questions/27089932/cross-entropy-softmax-and-the-derivative-term-in-backpropagation
-        :param y_hat: (array) One hot encoded truth vector.
+        :param y_true: (array) One hot encoded truth vector.
         :param y: (array) Prediction vector.
         :return: (array) Delta vector.
 
         y are softmax probabilitys
-        y_hat is truth vector one hot encoded
+        y_true is truth vector one hot encoded
 
-        y         y_hat
+        y         y_true
         [0.8]     [1]
         [0.1]     [0]
         [0.1]     [0]
@@ -72,22 +72,22 @@ class CrossEntropy:
         [0.1]
 
         """
-        return y - y_hat
+        return y - y_true
 
     @staticmethod
-    def loss(y_hat, y):
+    def loss(y_true, y):
         """
         https://datascience.stackexchange.com/questions/9302/the-cross-entropy-error-function-in-neural-networks
 
-        :param y_hat: (array) One hot encoded truth vector.
+        :param y_true: (array) One hot encoded truth vector.
         :param y: (array) Prediction vector
         :return: (flt)
         """
-        return -np.dot(y_hat, np.log(y))
+        return -np.dot(y_true, np.log(y))
 
 
 class MSE:
-    def __int__(self, activation_fn=None):
+    def __init__(self, activation_fn=None):
         """
 
         :param activation_fn: Class object of the activation function.
@@ -101,20 +101,24 @@ class MSE:
         return self.activation_fn.activation(z)
 
     @staticmethod
-    def loss(y_hat, y):
+    def loss(y_true, y_pred):
         """
-        :param y_hat: (array) One hot encoded truth vector.
-        :param y: (array) Prediction vector
+        :param y_true: (array) One hot encoded truth vector.
+        :param y_pred: (array) Prediction vector
         :return: (flt)
         """
-        return np.mean((y - y_hat)**2)
+        return np.mean((y_pred - y_true)**2)
 
     @staticmethod
-    def prime(y_hat, y):
-        return y - y_hat
+    def prime(y_true, y_pred):
+        return y_pred - y_true
 
-    def delta(self, y_hat, y):
-        self.prime(y_hat, y) * self.activation_fn.prime(y)
+    def delta(self, y_true, y_pred):
+        """
+        Back propagation error delta
+        :return: (array)
+        """
+        return self.prime(y_true, y_pred) * self.activation_fn.prime(y_pred)
 
 
 class NoActivation:
@@ -157,6 +161,8 @@ class Network:
         activations = (      Relu,      Sigmoid)
         """
         self.n_layers = len(dimensions)
+        self.loss = None
+        self.learning_rate = None
         # Weights and biases are initiated by index. For a one hidden layer net you will have a w[1] and w[2]
         self.w = {}
         self.b = {}
@@ -189,9 +195,76 @@ class Network:
 
         return z, a
 
+    def back_prop(self, z, a, y_true):
+        """
+        The input dicts keys represent the layers of the net.
+
+        a = { 1: x,
+              2: f(w1(x) + b1)
+              3: f(w2(a2) + b2)
+              }
+
+        :param z: (dict) w(x) + b
+        :param a: (dict) f(z)
+        :param y_true: (array) One hot encoded truth vector.
+        :return:
+        """
+
+        # Determine partial derivative and delta for the output layer.
+        # delta output layer
+        delta = self.loss.delta(a[self.n_layers], y_true)
+        dw = np.dot(a[self.n_layers - 1].T, delta)
+        # update weights and biases
+        self.update_w_b(self.n_layers - 1, dw, delta)
+
+        # In case of three layer net will iterate over i = 2 and i = 1
+        # Determine partial derivative and delta for the rest of the layers.
+        # Each iteration requires the delta from the previous layer, propagating backwards.
+        for i in reversed(range(2, self.n_layers)):
+            delta = np.dot(delta, self.w[i].T) * self.activations[i].prime(z[i])
+            dw = np.dot(a[i - 1].T, delta)
+            self.update_w_b(i - 1, dw, delta)
+
+    def update_w_b(self, index, dw, delta):
+        """
+        Update weights and biases.
+
+        :param index: (int) Number of the layer
+        :param dw: (array) Partial derivatives
+        :param delta: (array) Delta error.
+        """
+        self.w[index] -= self.learning_rate * np.mean(dw, 1)
+        self.b[index] -= self.learning_rate * np.mean(np.mean(delta, 1), 0)
+
+    def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=1e-3):
+        """
+        :param loss: Loss class (MSE, CrossEntropy etc.)
+        """
+        if not x.shape[0] == y_true.shape[0]:
+            raise ValueError("Length of x and y arrays don't match")
+        # Initiate the loss object with the final activation function
+        self.loss = loss(self.activations[self.n_layers])
+        self.learning_rate = learning_rate
+
+        for i in range(epochs):
+            # Shuffle the data
+            seed = np.arange(x.shape[0])
+            np.random.shuffle(seed)
+            x_ = x[seed]
+            y_ = y_true[seed]
+
+            for j in range(x.shape[0] // batch_size):
+                k = j * batch_size
+                l = (j + 1) * batch_size
+                z, a = self.feed_forward(x_[k:l])
+                self.back_prop(z, a, y_[k:l])
+
+            if (i + 1) % epochs // 10 == 0:
+                print("Loss:", self.loss.loss(y_true, z[self.n_layers]))
+
 if __name__ == "__main__":
     from sklearn import datasets
-    import sklearn.metrics
+    #import sklearn.metrics
 
     # Load data
     data = datasets.load_iris()
@@ -202,5 +275,6 @@ if __name__ == "__main__":
     # one hot encoding
     y = np.eye(3)[y]
 
-    nn = Network((4, 2, 2, 1), (Relu, Relu, Sigmoid))
-    nn.feed_forward(x[:1])
+    nn = Network((4, 8, 3), (Relu, Sigmoid))
+
+    nn.fit(x, y, MSE, 1000, batch_size=16)
