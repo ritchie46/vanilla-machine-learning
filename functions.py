@@ -219,9 +219,6 @@ class Network:
             self.n_layers - 1: (dw, delta)
         }
 
-        # update weights and biases
-        self.update_w_b(self.n_layers - 1, dw, delta)
-
         # In case of three layer net will iterate over i = 2 and i = 1
         # Determine partial derivative and delta for the rest of the layers.
         # Each iteration requires the delta from the previous layer, propagating backwards.
@@ -244,7 +241,7 @@ class Network:
         self.w[index] -= self.learning_rate * np.mean(dw, 1)
         self.b[index] -= self.learning_rate * np.mean(np.mean(delta, 1), 0)
 
-    def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=1e-3):
+    def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=2e-2):
         """
         :param loss: Loss class (MSE, CrossEntropy etc.)
         """
@@ -267,8 +264,12 @@ class Network:
                 z, a = self.feed_forward(x_[k:l])
                 self.back_prop(z, a, y_[k:l])
 
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 10 == 0:
                 print("Loss:", self.loss.loss(y_true, z[self.n_layers]))
+
+    def predict(self, x):
+        _, a = self.feed_forward(x)
+        return a[self.n_layers]
 
 if __name__ == "__main__":
     from sklearn import datasets
@@ -283,7 +284,21 @@ if __name__ == "__main__":
     # one hot encoding
     y = np.eye(3)[y]
 
-    nn = Network((4, 8, 3), (Relu, Sigmoid))
+    nn = Network((4, 8, 2, 3), (Relu, Relu, Sigmoid))
 
-    nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
-    #nn.fit(x, y, MSE, 10000, 16)
+    #nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
+    nn.fit(x, y, MSE, 1000, 16)
+    y_ = nn.predict(x)
+    a = np.argmax(y_, 1)
+
+    for i in range(a.size):
+        print(a[i], y[i])
+
+
+    # y_true = []
+    # y_pred = []
+    # for i in range(len(y)):
+    #     y_pred.append(np.argmax(y_[3][i]))
+    #     y_true.append(np.argmax(y[i]))
+    #
+    # print(sklearn.metrics.classification_report(y_true, y_pred))

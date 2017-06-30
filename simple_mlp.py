@@ -135,7 +135,7 @@ class NeuralNetwork:
 
         # partial derivative with respect to layer 1
         delta2 = np.dot(delta3, self.w[2].T) * diff_relu(self.z[2])
-        print(self.w[2].T)
+
         # dc_db1 = delta2
         dc_dw1 = np.dot(self.x.T, delta2)
 
@@ -194,7 +194,10 @@ if __name__ == "__main__":
     y = np.eye(3)[y]
 
     nn = NeuralNetwork(4, 8, 3, 2e-2)
-    nn.fit(x[:2], y[:2], 2, 1)
+    #nn.fit(x[:2], y[:2], 2, 1)
+    nn.fit(x, y, 16, 1000)
+    _, y_ = feed_forward(x, nn.w, nn.b)
+    print(y_)
 
     # # result
     # _, y_ = feed_forward(x, nn.w, nn.b)
