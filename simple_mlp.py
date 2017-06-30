@@ -79,7 +79,7 @@ def cost_mse(a, y):
     :param y: (array) Ground truth labels
     :return: (flt) Loss
     """
-    return 0.5 * np.sum((a - y)**2)
+    return np.mean((a - y)**2)
 
 
 def diff_cost_mse(a, y):
@@ -135,7 +135,7 @@ class NeuralNetwork:
 
         # partial derivative with respect to layer 1
         delta2 = np.dot(delta3, self.w[2].T) * diff_relu(self.z[2])
-
+        print(self.w[2].T)
         # dc_db1 = delta2
         dc_dw1 = np.dot(self.x.T, delta2)
 
@@ -175,7 +175,7 @@ class NeuralNetwork:
 
             _, y = feed_forward(x, self.w, self.b)
 
-            if i % epochs // 10 == 0:
+            if i % 100:
                 print("Loss:", cost_mse(y[3], labels))
 
 
@@ -194,15 +194,15 @@ if __name__ == "__main__":
     y = np.eye(3)[y]
 
     nn = NeuralNetwork(4, 8, 3, 2e-2)
-    nn.fit(x, y, 10, int(1e3))
+    nn.fit(x[:2], y[:2], 2, 1)
 
-    # result
-    _, y_ = feed_forward(x, nn.w, nn.b)
-    y_true = []
-    y_pred = []
-    for i in range(len(y)):
-        y_pred.append(np.argmax(y_[3][i]))
-        y_true.append(np.argmax(y[i]))
-
-    print(sklearn.metrics.classification_report(y_true, y_pred))
-
+    # # result
+    # _, y_ = feed_forward(x, nn.w, nn.b)
+    # y_true = []
+    # y_pred = []
+    # for i in range(len(y)):
+    #     y_pred.append(np.argmax(y_[3][i]))
+    #     y_true.append(np.argmax(y[i]))
+    #
+    # print(sklearn.metrics.classification_report(y_true, y_pred))
+    #

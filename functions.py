@@ -212,8 +212,13 @@ class Network:
 
         # Determine partial derivative and delta for the output layer.
         # delta output layer
-        delta = self.loss.delta(a[self.n_layers], y_true)
+        delta = self.loss.delta(y_true, a[self.n_layers])
         dw = np.dot(a[self.n_layers - 1].T, delta)
+
+        update_params = {
+            self.n_layers - 1: (dw, delta)
+        }
+
         # update weights and biases
         self.update_w_b(self.n_layers - 1, dw, delta)
 
@@ -223,7 +228,10 @@ class Network:
         for i in reversed(range(2, self.n_layers)):
             delta = np.dot(delta, self.w[i].T) * self.activations[i].prime(z[i])
             dw = np.dot(a[i - 1].T, delta)
-            self.update_w_b(i - 1, dw, delta)
+            update_params[i - 1] = (dw, delta)
+
+        for k, v in update_params.items():
+            self.update_w_b(k, v[0], v[1])
 
     def update_w_b(self, index, dw, delta):
         """
@@ -259,13 +267,13 @@ class Network:
                 z, a = self.feed_forward(x_[k:l])
                 self.back_prop(z, a, y_[k:l])
 
-            if (i + 1) % epochs // 10 == 0:
+            if (i + 1) % 100 == 0:
                 print("Loss:", self.loss.loss(y_true, z[self.n_layers]))
 
 if __name__ == "__main__":
     from sklearn import datasets
     #import sklearn.metrics
-
+    np.random.seed(1)
     # Load data
     data = datasets.load_iris()
     x = data["data"]
@@ -277,4 +285,5 @@ if __name__ == "__main__":
 
     nn = Network((4, 8, 3), (Relu, Sigmoid))
 
-    nn.fit(x, y, MSE, 1000, batch_size=16)
+    nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
+    #nn.fit(x, y, MSE, 10000, 16)
