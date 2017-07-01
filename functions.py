@@ -122,6 +122,11 @@ class MSE:
 
 
 class NoActivation:
+    """
+    This is a plugin function for no activation.
+
+    f(x) = x * 1
+    """
     @staticmethod
     def activation(z):
         """
@@ -131,15 +136,13 @@ class NoActivation:
         return z
 
     @staticmethod
-    def prime(x):
+    def prime(z):
         """
-        Linear relation. The prime is the input variable.
-        z = w(x) + b
-        z' = x
-        :param x: (array) Input variable x
-        :return: x: (array)
+        The prime of z * 1 = 1
+        :param z: (array)
+        :return: z': (array)
         """
-        return x
+        return np.ones_like(z)
 
 
 class Network:
@@ -277,40 +280,40 @@ if __name__ == "__main__":
     from sklearn import datasets
     import sklearn.metrics
     np.random.seed(1)
-    # Load data
-    data = datasets.load_iris()
-    x = data["data"]
-    x = (x - x.mean()) / x.std()
-    y = data["target"]
-    #y = np.expand_dims(data["target"], 1)
-
-    # one hot encoding
-    y = np.eye(3)[y]
-
-    nn = Network((4, 8, 3), (Relu, Relu, Sigmoid))
-
-    #nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
-    nn.fit(x, y, MSE, 1000, 16)
-
-    # data = datasets.load_digits()
-    #
+    # # Load data
+    # data = datasets.load_iris()
     # x = data["data"]
+    # x = (x - x.mean()) / x.std()
     # y = data["target"]
-    # y = np.eye(10)[y]
+    # #y = np.expand_dims(data["target"], 1)
     #
-    # nn = Network((64, 32, 10), (Relu, Sigmoid))
-    # nn.fit(x, y, MSE, 100, 2)
+    # # one hot encoding
+    # y = np.eye(3)[y]
     #
+    # nn = Network((4, 8, 3), (Relu, Sigmoid))
+    #
+    # #nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
+    # nn.fit(x, y, MSE, 1000, 16)
+
+    data = datasets.load_digits()
+
+    x = data["data"]
+    y = data["target"]
+    y = np.eye(10)[y]
+
+    nn = Network((64, 32, 10), (Relu, Sigmoid))
+    nn.fit(x, y, MSE, 100, 2)
+
     y_ = nn.predict(x)
     a = np.argmax(y_, 1)
 
-    # for i in range(a.size):
-    #     print(a[i], y[i], "\t", np.round(y_[i], 3))
+    for i in range(a.size):
+        print(a[i], y[i], "\t", np.round(y_[i], 3))
 
-    # y_true = []
-    # y_pred = []
-    # for i in range(len(y)):
-    #     y_pred.append(np.argmax(y_[3][i]))
-    #     y_true.append(np.argmax(y[i]))
-    #
-    # print(sklearn.metrics.classification_report(y_true, y_pred))
+    y_true = []
+    y_pred = []
+    for i in range(len(y)):
+        y_pred.append(np.argmax(y_[i]))
+        y_true.append(np.argmax(y[i]))
+
+    print(sklearn.metrics.classification_report(y_true, y_pred))
