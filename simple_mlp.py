@@ -140,10 +140,10 @@ class NeuralNetwork:
         dc_dw1 = np.dot(self.x.T, delta2)
 
         # update weights and biases
-        self.w[2] -= self.learning_rate * np.mean(dc_dw2, 1)
-        self.b[2] -= self.learning_rate * np.mean(np.mean(delta3, 1), 0)
-        self.w[1] -= self.learning_rate * np.mean(dc_dw1, 1)
-        self.b[1] -= self.learning_rate * np.mean(np.mean(delta2, 1), 0)
+        self.w[2] -= self.learning_rate * dc_dw2
+        self.b[2] -= self.learning_rate * np.mean(delta3, 0)
+        self.w[1] -= self.learning_rate * dc_dw1
+        self.b[1] -= self.learning_rate * np.mean(delta2, 0)
 
     def stats(self):
         """
@@ -188,24 +188,24 @@ if __name__ == "__main__":
     data = datasets.load_iris()
     x = data["data"]
     x = (x - x.mean()) / x.std()
-    y = np.expand_dims(data["target"], 1)
+    y = data["target"]
 
     # one hot encoding
     y = np.eye(3)[y]
 
-    nn = NeuralNetwork(4, 8, 3, 2e-2)
+    nn = NeuralNetwork(4, 4, 3, 1e-2)
     #nn.fit(x[:2], y[:2], 2, 1)
-    nn.fit(x, y, 16, 1000)
+    nn.fit(x, y, 8, 1000)
     _, y_ = feed_forward(x, nn.w, nn.b)
-    print(y_)
+    print(y_[3])
 
     # # result
     # _, y_ = feed_forward(x, nn.w, nn.b)
-    # y_true = []
-    # y_pred = []
-    # for i in range(len(y)):
-    #     y_pred.append(np.argmax(y_[3][i]))
-    #     y_true.append(np.argmax(y[i]))
-    #
-    # print(sklearn.metrics.classification_report(y_true, y_pred))
-    #
+    y_true = []
+    y_pred = []
+    for i in range(len(y)):
+        y_pred.append(np.argmax(y_[3][i]))
+        y_true.append(np.argmax(y[i]))
+
+    print(sklearn.metrics.classification_report(y_true, y_pred))
+

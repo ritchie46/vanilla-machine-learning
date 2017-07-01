@@ -238,8 +238,9 @@ class Network:
         :param dw: (array) Partial derivatives
         :param delta: (array) Delta error.
         """
-        self.w[index] -= self.learning_rate * np.mean(dw, 1)
-        self.b[index] -= self.learning_rate * np.mean(np.mean(delta, 1), 0)
+
+        self.w[index] -= self.learning_rate * dw
+        self.b[index] -= self.learning_rate * np.mean(delta, 0)
 
     def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=2e-2):
         """
@@ -265,7 +266,8 @@ class Network:
                 self.back_prop(z, a, y_[k:l])
 
             if (i + 1) % 10 == 0:
-                print("Loss:", self.loss.loss(y_true, z[self.n_layers]))
+                _, a = self.feed_forward(x)
+                print("Loss:", self.loss.loss(y_true, a[self.n_layers]))
 
     def predict(self, x):
         _, a = self.feed_forward(x)
@@ -273,27 +275,37 @@ class Network:
 
 if __name__ == "__main__":
     from sklearn import datasets
-    #import sklearn.metrics
+    import sklearn.metrics
     np.random.seed(1)
     # Load data
     data = datasets.load_iris()
     x = data["data"]
     x = (x - x.mean()) / x.std()
-    y = np.expand_dims(data["target"], 1)
+    y = data["target"]
+    #y = np.expand_dims(data["target"], 1)
 
     # one hot encoding
     y = np.eye(3)[y]
 
-    nn = Network((4, 8, 2, 3), (Relu, Relu, Sigmoid))
+    nn = Network((4, 8, 3), (Relu, Relu, Sigmoid))
 
     #nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
     nn.fit(x, y, MSE, 1000, 16)
+
+    # data = datasets.load_digits()
+    #
+    # x = data["data"]
+    # y = data["target"]
+    # y = np.eye(10)[y]
+    #
+    # nn = Network((64, 32, 10), (Relu, Sigmoid))
+    # nn.fit(x, y, MSE, 100, 2)
+    #
     y_ = nn.predict(x)
     a = np.argmax(y_, 1)
 
-    for i in range(a.size):
-        print(a[i], y[i])
-
+    # for i in range(a.size):
+    #     print(a[i], y[i], "\t", np.round(y_[i], 3))
 
     # y_true = []
     # y_pred = []
