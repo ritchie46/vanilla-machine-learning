@@ -24,68 +24,6 @@ class Sigmoid:
         return Sigmoid.activation(z) * (1 - Sigmoid.activation(z))
 
 
-class Softmax:
-    @staticmethod
-    def activation(z):
-        """
-        https://stackoverflow.com/questions/34968722/softmax-function-python
-
-        Numerically stable version
-        """
-        e_x = np.exp(z - np.max(z))
-        return e_x / e_x.sum()
-
-    # https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function
-    # http://cs231n.github.io/neural-networks-case-study/#loss
-
-
-class CrossEntropy:
-    """
-    Used with Softmax activation in final layer
-    """
-
-    @staticmethod
-    def activation(z):
-        return Softmax.activation(z)
-
-    @staticmethod
-    def delta(y_true, y):
-        """
-        http://cs231n.github.io/linear-classify/#softmax
-        https://stackoverflow.com/questions/27089932/cross-entropy-softmax-and-the-derivative-term-in-backpropagation
-        :param y_true: (array) One hot encoded truth vector.
-        :param y: (array) Prediction vector.
-        :return: (array) Delta vector.
-
-        y are softmax probabilitys
-        y_true is truth vector one hot encoded
-
-        y         y_true
-        [0.8]     [1]
-        [0.1]     [0]
-        [0.1]     [0]
-
-        result:
-
-        [-0.2]
-        [0.1]
-        [0.1]
-
-        """
-        return y - y_true
-
-    @staticmethod
-    def loss(y_true, y):
-        """
-        https://datascience.stackexchange.com/questions/9302/the-cross-entropy-error-function-in-neural-networks
-
-        :param y_true: (array) One hot encoded truth vector.
-        :param y: (array) Prediction vector
-        :return: (flt)
-        """
-        return -np.dot(y_true, np.log(y))
-
-
 class MSE:
     def __init__(self, activation_fn=None):
         """
@@ -295,16 +233,15 @@ if __name__ == "__main__":
     y = data["target"]
     y = np.eye(10)[y]
 
-    nn = Network((64, 10, 10), (Relu, Sigmoid))
-    nn.fit(x, y, MSE, 100, 15, learning_rate=1e-3)
+    nn = Network((64, 15, 10), (Relu, Sigmoid))
+    nn.fit(x, y, loss=MSE, epochs=50, batch_size=15, learning_rate=1e-3)
 
-    y_ = nn.predict(x)
-    a = np.argmax(y_, 1)
+    prediction = nn.predict(x)
 
     y_true = []
     y_pred = []
     for i in range(len(y)):
-        y_pred.append(np.argmax(y_[i]))
+        y_pred.append(np.argmax(prediction[i]))
         y_true.append(np.argmax(y[i]))
 
     print(sklearn.metrics.classification_report(y_true, y_pred))
