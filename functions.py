@@ -245,7 +245,7 @@ class Network:
         self.w[index] -= self.learning_rate * dw
         self.b[index] -= self.learning_rate * np.mean(delta, 0)
 
-    def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=1e-3):
+    def fit(self, x, y_true, loss, epochs, batch_size, learning_rate=2e-2):
         """
         :param x: (array) Containing parameters
         :param y_true: (array) Containing one hot encoded labels.
@@ -289,22 +289,52 @@ if __name__ == "__main__":
     from sklearn import datasets
     import sklearn.metrics
     np.random.seed(1)
-    data = datasets.load_digits()
-
+    # Load data
+    data = datasets.load_iris()
     x = data["data"]
+    x = (x - x.mean()) / x.std()
     y = data["target"]
-    y = np.eye(10)[y]
+    #y = np.expand_dims(data["target"], 1)
 
-    nn = Network((64, 10, 10), (Relu, Sigmoid))
-    nn.fit(x, y, MSE, 100, 15, learning_rate=1e-3)
+    # one hot encoding
+    y = np.eye(3)[y]
 
-    y_ = nn.predict(x)
-    a = np.argmax(y_, 1)
+    from pprint import pprint
 
-    y_true = []
-    y_pred = []
-    for i in range(len(y)):
-        y_pred.append(np.argmax(y_[i]))
-        y_true.append(np.argmax(y[i]))
+    nn = Network((2, 3, 1), (Relu, Sigmoid))
 
-    print(sklearn.metrics.classification_report(y_true, y_pred))
+    print("Weights:")
+    pprint(nn.w)
+
+    print("Biases:")
+    pprint(nn.b)
+
+    pprint(nn.activations)
+
+    pprint()
+
+    #nn.fit(x[:2], y[:2], MSE, 1, batch_size=2)
+    # nn.fit(x, y, MSE, 1000, 16)
+
+    # data = datasets.load_digits()
+    #
+    # x = data["data"]
+    # y = data["target"]
+    # y = np.eye(10)[y]
+    #
+    # nn = Network((64, 32, 10), (Relu, Sigmoid))
+    # nn.fit(x, y, MSE, 100, 2)
+    #
+    # y_ = nn.predict(x)
+    # a = np.argmax(y_, 1)
+    #
+    # for i in range(a.size):
+    #     print(a[i], y[i], "\t", np.round(y_[i], 3))
+    #
+    # y_true = []
+    # y_pred = []
+    # for i in range(len(y)):
+    #     y_pred.append(np.argmax(y_[i]))
+    #     y_true.append(np.argmax(y[i]))
+    #
+    # print(sklearn.metrics.classification_report(y_true, y_pred))
