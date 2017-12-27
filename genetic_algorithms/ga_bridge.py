@@ -12,12 +12,13 @@ class DNA:
     def __init__(self, length, height, pop_size=600, cross_rate=0.8, mutation_rate=0.0001):
         self.length = length
         self.height = height
+        self.mirror_line = length // 2
         self.pop_size = pop_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
         # Assumed that length > height
         # product: permutations with replacement.
-        self.loc = np.array(list(filter(lambda x: x[1] <= height or 1, product(range(length + 1), repeat=2))))
+        self.loc = np.array(list(filter(lambda x: x[1] <= height, product(range(self.mirror_line + 1), repeat=2))))
 
         # Index tuples of possible connections
         # filters all the vector combinations with an euclidean distance < 1.5.
@@ -41,21 +42,36 @@ class DNA:
 
             for j in on.flatten():
                 n1, n2 = self.comb[j]
-                ss.add_element([self.loc[n1], self.loc[n2]])
+                l1 = self.loc[n1]
+                l2 = self.loc[n2]
+
+                ss.add_element([l1, l2])
+                # add mirror
+                ss.add_element([mirror(l1, self.mirror_line), mirror(l2, self.mirror_line)])
 
             # Placing the supports on the outer nodes, and the point load on the middle node.
             x_range = ss.nodes_range('x')
-            length = max(x_range)
-            middle_node_id = np.argmin(np.abs(np.array(x_range) - length // 2)) + 1
-            max_node_id = np.argmin(np.abs(np.array(x_range) - length)) + 1
-            ss.add_support_hinged(1)
-            ss.add_support_roll(max_node_id)
-            ss.point_load(middle_node_id, Fz=-100)
+            if len(x_range) <= 2:
+                builds[i] = None
+                all_lengths[i] = 0
+                n_elements[i] = 0
+            else:
+                length = max(x_range)
+                start = min(x_range)
+                ids = list(ss.node_map.keys())
 
-            builds[i] = ss
-            middle_node[i] = middle_node_id
-            all_lengths[i] = length
-            n_elements[i] = on.size
+                middle_node_id = ids[np.argmin(np.abs(np.array(x_range) - (length + start) / 2))]
+                max_node_id = ids[np.argmax(x_range)]
+
+                ss.add_support_hinged(1)
+                ss.add_support_roll(max_node_id)
+                ss.point_load(middle_node_id, Fz=-100)
+
+                builds[i] = ss
+                middle_node[i] = middle_node_id
+                all_lengths[i] = length
+                n_elements[i] = on.size
+
         self.builds = builds
         return builds, middle_node, all_lengths, n_elements
 
@@ -66,18 +82,16 @@ class DNA:
         for i in range(builds.shape[0]):
             if validate_calc(builds[i]):
                 w = np.abs(builds[i].get_node_displacements(middle_node[i])["uy"])
+                x_range = builds[i].nodes_range('x')
+                length = max(x_range) - min(x_range)
 
-                fitness_w[i] = 1.0 / w
-        score = fitness_w * 10 * (1 / fitness_n) * fitness_l
-        fitness_l = normalize(fitness_l) * 2
-        fitness_w = normalize(fitness_w) * 10
-        fitness_n = normalize(1 / fitness_n)
+                fitness_w[i] = 1.0 / (w / ((100 * length**3) / (48 * builds[i].EI)))
 
-        return fitness_w * fitness_l * fitness_n, score, fitness_w
+        # fitness_l = normalize(fitness_l) * 2
+        # fitness_w = normalize(fitness_w) * 10
+        fitness_n = normalize(1 / fitness_n) * 10
 
-    def select(self, fitness):
-        i = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p=fitness / np.sum(fitness))
-        return self.pop[i]
+        return fitness_w * fitness_l**2 / 5 + fitness_n, fitness_w
 
     def crossover(self, parent, pop, fitness):
         if np.random.rand() < self.cross_rate:
@@ -94,8 +108,7 @@ class DNA:
         return child
 
     def evolve(self, fitness):
-        # fitness_ordered = fitness[np.argsort(fitness)]
-        pop = self.select(fitness)
+        pop = rank_selection(self.pop, fitness)
         pop_copy = pop.copy()
 
         for i in range(pop.shape[0]):
@@ -107,11 +120,20 @@ class DNA:
         self.pop = pop
 
 
+def rank_selection(pop, fitness):
+    order = np.argsort(fitness)[::-1]
+    pop = pop[order]
+
+    rank_p = 1 / np.arange(1, pop.shape[0] + 1)
+    idx = np.random.choice(np.arange(pop.shape[0]), size=pop.shape[0], replace=True, p=rank_p / np.sum(rank_p))
+    return pop[idx]
+
+
 def validate_calc(ss):
     try:
         displacement_matrix = ss.solve()
         return not np.any(np.abs(displacement_matrix) > 1e9)
-    except np.linalg.LinAlgError:
+    except (np.linalg.LinAlgError, AttributeError):
         return False
 
 
@@ -132,22 +154,34 @@ def choose_fit_parent(pop):
     i = int(np.random.random() * np.random.random() * (pop.shape[1] - 1))
     return pop[i]
 
-a = DNA(5, 4, 500, cross_rate=0.8, mutation_rate=0.001)
+
+def mirror(v, m_x):
+    """
+
+    :param v: (array) vertex
+    :param m_x: (int) mirror x value
+    :return: (array) vertex
+    """
+
+    return np.array([m_x + m_x - v[0], v[1]])
+
+
+a = DNA(10, 3, 200, cross_rate=0.8, mutation_rate=0.05)
 plt.ion()
 
-with open("save.pkl", "rb") as f:
-    a = pickle.load(f)
-    a.mutation_rate = 0.025
-    a.cross_rate= 0.8
+# with open("save.pkl", "rb") as f:
+#     a = pickle.load(f)
+#     a.mutation_rate = 0.1
+#     a.cross_rate= 0.8
 
 for i in range(150):
-    fitness, s, w = a.get_fitness()
+    fitness, w = a.get_fitness()
     a.evolve(fitness)
 
-    index_max = np.argmax(s)
-    print("gen", i, "max fitness", s[index_max], "w", w[index_max])
+    index_max = np.argmax(fitness)
+    print("gen", i, "max fitness", fitness[index_max], "w", w[index_max])
 
-    if i % 10 == 0:
+    if i % 2 == 0:
         plt.cla()
         fig = a.builds[index_max].show_structure(show=False)
 
