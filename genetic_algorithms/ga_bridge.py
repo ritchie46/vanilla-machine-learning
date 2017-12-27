@@ -60,8 +60,12 @@ class DNA:
                 start = min(x_range)
                 ids = list(ss.node_map.keys())
 
-                middle_node_id = ids[np.argmin(np.abs(np.array(x_range) - (length + start) / 2))]
                 max_node_id = ids[np.argmax(x_range)]
+
+                middle_node_id = ss.nearest_node("both", np.array([(length + start) / 2, self.height]))
+
+                if middle_node_id is None:
+                    middle_node_id = ids[np.argmin(np.abs(np.array(x_range) - (length + start) / 2))]
 
                 ss.add_support_hinged(1)
                 ss.add_support_roll(max_node_id)
@@ -84,19 +88,16 @@ class DNA:
                 w = np.abs(builds[i].get_node_displacements(middle_node[i])["uy"])
                 x_range = builds[i].nodes_range('x')
                 length = max(x_range) - min(x_range)
-
                 fitness_w[i] = 1.0 / (w / ((100 * length**3) / (48 * builds[i].EI)))
 
-        # fitness_l = normalize(fitness_l) * 2
-        # fitness_w = normalize(fitness_w) * 10
-        fitness_n = normalize(1 / fitness_n) * 10
+        fitness_n = (1 / fitness_n) * 250
 
-        return fitness_w * fitness_l**2 / 5 + fitness_n, fitness_w
+        return fitness_w + fitness_l**2 / 5 + fitness_n, fitness_w
 
     def crossover(self, parent, pop, fitness):
         if np.random.rand() < self.cross_rate:
-            i = np.random.choice(np.arange(self.pop_size), size=1, p=fitness / np.sum(fitness))
-            # i = np.random.randint(0, self.pop_size, size=1)
+            # i = np.random.choice(np.arange(self.pop_size), size=1, p=fitness / np.sum(fitness))
+            i = np.random.randint(0, self.pop_size, size=1)
             cross_index = np.random.randint(0, 2, size=self.comb.shape[0]).astype(np.bool)
             parent[cross_index] = pop[i, cross_index]
 
