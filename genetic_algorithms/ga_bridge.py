@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import pickle
 from scipy.spatial.distance import euclidean
 from itertools import combinations, product
@@ -62,13 +63,16 @@ class DNA:
 
                 max_node_id = ids[np.argmax(x_range)]
 
-                middle_node_id = ss.nearest_node("both", np.array([(length + start) / 2, self.height]))
+                for j in range(self.height):
+                    middle_node_id = ss.nearest_node("both", np.array([(length + start) / 2, self.height - j]))
+                    if middle_node_id:
+                        break
 
                 if middle_node_id is None:
                     middle_node_id = ids[np.argmin(np.abs(np.array(x_range) - (length + start) / 2))]
 
                 ss.add_support_hinged(1)
-                ss.add_support_roll(max_node_id)
+                ss.add_support_hinged(max_node_id)
                 ss.point_load(middle_node_id, Fz=-100)
 
                 builds[i] = ss
@@ -85,14 +89,16 @@ class DNA:
 
         for i in range(builds.shape[0]):
             if validate_calc(builds[i]):
+
                 w = np.abs(builds[i].get_node_displacements(middle_node[i])["uy"])
+
                 x_range = builds[i].nodes_range('x')
                 length = max(x_range) - min(x_range)
                 fitness_w[i] = 1.0 / (w / ((100 * length**3) / (48 * builds[i].EI)))
 
-        fitness_n = (1 / fitness_n) * 250
+        fitness_n = (400 / fitness_n)**2
 
-        return fitness_w + fitness_l**2 / 5 + fitness_n, fitness_w
+        return fitness_l**2 + fitness_n + fitness_w, fitness_w, fitness_n
 
     def crossover(self, parent, pop, fitness):
         if np.random.rand() < self.cross_rate:
@@ -132,8 +138,9 @@ def rank_selection(pop, fitness):
 
 def validate_calc(ss):
     try:
+        a = ss.validate()
         displacement_matrix = ss.solve()
-        return not np.any(np.abs(displacement_matrix) > 1e9)
+        return not np.any(np.abs(displacement_matrix) > 1e9) and a
     except (np.linalg.LinAlgError, AttributeError):
         return False
 
@@ -167,28 +174,52 @@ def mirror(v, m_x):
     return np.array([m_x + m_x - v[0], v[1]])
 
 
-a = DNA(10, 3, 200, cross_rate=0.8, mutation_rate=0.05)
-plt.ion()
+a = DNA(10, 6, 200, cross_rate=0.8, mutation_rate=0.05)
+# plt.ion()
 
-# with open("save.pkl", "rb") as f:
-#     a = pickle.load(f)
-#     a.mutation_rate = 0.1
-#     a.cross_rate= 0.8
 
-for i in range(150):
-    fitness, w = a.get_fitness()
+base_dir = "/home/ritchie46/code/machine_learning/vanilla-machine-learning/genetic_algorithms/img/"
+name = "n3"
+os.makedirs(os.path.join(base_dir, f"best_{name}"), exist_ok=1)
+
+with open(os.path.join(base_dir, f"best_{name}", "save.pkl"), "rb") as f:
+    a = pickle.load(f)
+    # a.mutation_rate = 0.1
+    # a.cross_rate= 0.8
+    f, w, n = a.get_fitness()
+    f[np.argwhere(w == 0)] = 0
+    idx = np.argmax(f)
+    print(w[idx], n[idx])
+    a.builds[idx].show_bending_moment()
+
+last_fitness = 0
+
+for i in range(100, 150):
+    fitness, w, n = a.get_fitness()
+
+    fitness[np.argwhere(w == 0)] = 0
+
     a.evolve(fitness)
 
-    index_max = np.argmax(fitness)
-    print("gen", i, "max fitness", fitness[index_max], "w", w[index_max])
+    max_idx = np.argmax(fitness)
+    print("gen", i, "max fitness", fitness[max_idx], "w", w[max_idx], "n", n[max_idx])
 
-    if i % 2 == 0:
+    if i % 1 == 0:
+
         plt.cla()
-        fig = a.builds[index_max].show_structure(show=False)
 
-        plt.pause(0.5)
+        if last_fitness != fitness[max_idx]:
+            try:
+                fig = a.builds[max_idx].show_structure(show=False, verbosity=1)
+                plt.title(f"fitness = {round(fitness[max_idx], 3)}")
+                fig.savefig(os.path.join(base_dir, f"best_{name}", f"ga{i}.png"))
+            except AttributeError:
+                pass
 
-    if i % 20 == 0:
-        with open("save.pkl", "wb") as f:
+        last_fitness = fitness[max_idx]
+        # plt.pause(0.5)
+
+    if i % 1 == 0:
+        with open(os.path.join(base_dir, f"best_{name}", "save.pkl"), "wb") as f:
             pickle.dump(a, f)
 
