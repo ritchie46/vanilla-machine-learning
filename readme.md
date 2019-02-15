@@ -1,5 +1,6 @@
 # Various machine learning algorithms. Mostly vanilla.
 
+* [gaussian processes](https://www.ritchievink.com/blog/2019/02/01/an-intuitive-introduction-to-gaussian-processes/)
 * [bayesian generalized additive models](https://www.ritchievink.com/blog/2018/10/09/build-facebooks-prophet-in-pymc3-bayesian-time-series-analyis-with-generalized-additive-models/)
 * [gradient boosting machines](https://www.ritchievink.com/blog/2018/10/09/algorithm-breakdown-why-do-we-call-it-gradient-boosting/)
 * [dirichlet gaussian mixture models](https://www.ritchievink.com/blog/2018/06/05/clustering-data-with-dirichlet-mixtures-in-edward-and-pymc3/)
